@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SME Finance Assistant</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <!-- Use a highly modern font stack like Framer templates often use (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #FAFAFA;
+            --sidebar-bg: #FFFFFF;
+            --border-color: #EAEAEA;
+            --text-main: #111111;
+            --text-muted: #666666;
+            --accent-gradient: linear-gradient(135deg, #FF512F 0%, #DD2476 100%);
+            --accent-solid: #000000;
+            --hover-bg: #F5F5F5;
+            --card-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+            --card-border: 1px solid rgba(0,0,0,0.05);
+            --radius-lg: 20px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+        }
+
+        *, *::before, *::after { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+        }
+
+        html, body { 
+            height: 100%; 
+            overflow: hidden; 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+            background: var(--bg-color); 
+            color: var(--text-main); 
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .app { display: flex; height: 100vh; }
+
+        /* ======================== SIDEBAR ======================== */
+        .sidebar { 
+            width: 280px; 
+            background: var(--sidebar-bg); 
+            border-right: 1px solid var(--border-color); 
+            display: flex; 
+            flex-direction: column; 
+            padding: 1.5rem 1.25rem; 
+            gap: 0.5rem; 
+            flex-shrink: 0; 
+            z-index: 20;
+            box-shadow: 1px 0 10px rgba(0,0,0,0.02);
+        }
+
+        .sidebar-logo { 
+            font-size: 1.1rem; 
+            font-weight: 700; 
+            color: var(--text-main); 
+            padding: 0.5rem 0.5rem 2rem; 
+            display: flex; 
+            align-items: center; 
+            gap: 0.75rem; 
+            letter-spacing: -0.02em;
+        }
+        
+        .logo-icon {
+            width: 28px;
+            height: 28px;
+            background: var(--accent-gradient);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .new-chat-btn { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            gap: 0.5rem; 
+            padding: 0.75rem 1rem; 
+            background: var(--text-main); 
+            border: none; 
+            border-radius: var(--radius-sm); 
+            color: #FFFFFF; 
+            font-size: 0.9rem; 
+            font-weight: 500; 
+            cursor: pointer; 
+            transition: transform 0.2s ease, opacity 0.2s ease; 
+            width: 100%; 
+            margin-bottom: 1.5rem; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .new-chat-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .new-chat-btn:active { transform: translateY(0); }
+
+        .nav-item { 
+            display: flex; 
+            align-items: center; 
+            gap: 0.75rem; 
+            padding: 0.75rem 1rem; 
+            border-radius: var(--radius-sm); 
+            color: var(--text-muted); 
+            font-size: 0.9rem; 
+            font-weight: 500;
+            cursor: pointer; 
+            transition: all 0.2s ease; 
+        }
+        .nav-item:hover { background: var(--hover-bg); color: var(--text-main); }
+        .nav-item.active { background: var(--hover-bg); color: var(--text-main); font-weight: 600; }
+        
+        .sidebar-section-title { 
+            font-size: 0.75rem; 
+            color: #999; 
+            font-weight: 600; 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em; 
+            padding: 2rem 0.5rem 0.5rem; 
+        }
+        
+        .upload-area { 
+            border: 1px dashed #CCC; 
+            border-radius: var(--radius-md); 
+            padding: 1.5rem 1rem; 
+            text-align: center; 
+            cursor: pointer; 
+            transition: all 0.2s ease; 
+            background: #FAFAFA;
+        }
+        .upload-area:hover { border-color: var(--text-main); background: #F0F0F0; }
+        .upload-area p { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; }
+        .upload-area span { color: var(--text-main); font-weight: 600; }
+        .upload-icon { font-size: 1.5rem; }
+
+        #upload-status { font-size: 0.75rem; color: #999; padding: 0.75rem 0.5rem; text-align: center; }
+
+        /* ======================== MAIN CONTENT ======================== */
+        .main-content { 
+            flex-grow: 1; 
+            display: flex; 
+            flex-direction: column; 
+            background: var(--bg-color); 
+            position: relative; 
+        }
+        
+        .view-container { display: none; height: 100%; flex-direction: column; overflow: hidden; }
+        .view-container.active { display: flex; animation: fadeIn 0.4s ease; }
+
+        .header { 
+            height: 70px; 
+            display: flex; 
+            align-items: center; 
+            padding: 0 2rem; 
+            border-bottom: 1px solid var(--border-color); 
+            background: rgba(255, 255, 255, 0.8); 
+            backdrop-filter: blur(20px); 
+            z-index: 10; 
+            font-weight: 600; 
+            font-size: 1.1rem;
+            letter-spacing: -0.01em;
+        }
+
+        /* ======================== CHAT VIEW ======================== */
+        .chat-messages { 
+            flex-grow: 1; 
+            overflow-y: auto; 
+            padding: 2rem; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 1.25rem; 
+            scroll-behavior: smooth; 
+            margin: 0 auto;
+            width: 100%;
+            max-width: 900px;
+        }
+        
+        .message-row { 
+            display: flex; 
+            gap: 1rem; 
+            max-width: 85%; 
+            width: fit-content;
+            animation: slideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .message-row.user-message {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+        .message-row.ai-message {
+            align-self: flex-start;
+        }
+        
+        .avatar { 
+            width: 32px; 
+            height: 32px; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-weight: 600; 
+            font-size: 0.85rem; 
+            flex-shrink: 0; 
+            margin-top: 0.25rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .avatar.user { background: #000; color: #FFF; }
+        .avatar.ai { background: var(--accent-gradient); color: #FFF; }
+        
+        .message-content { 
+            line-height: 1.6; 
+            font-size: 0.95rem; 
+            padding: 0.85rem 1.25rem;
+            border-radius: 1.25rem;
+            overflow-wrap: break-word; 
+        }
+        .user-message .message-content {
+            background: #000000;
+            color: #FFFFFF;
+            border-top-right-radius: 4px;
+        }
+        .ai-message .message-content {
+            background: #FFFFFF;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            border-top-left-radius: 4px;
+        }
+        .message-content p { margin-bottom: 0.75rem; }
+        .message-content p:last-child { margin-bottom: 0; }
+        .message-content strong { font-weight: 600; }
+        
+        .message-content table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin: 1rem 0; 
+            background: #FFFFFF; 
+            border-radius: var(--radius-sm); 
+            overflow: hidden; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+        }
+        
+        .suggestions-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+            margin-top: -0.25rem;
+            margin-bottom: 1rem;
+            max-width: 90%;
+            justify-content: flex-start;
+        }
+        .suggestion-bubble {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 0.5rem 1rem;
+            border-radius: 1.5rem;
+            font-size: 0.85rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .suggestion-bubble:hover {
+            border-color: #DD2476;
+            color: #DD2476;
+            box-shadow: 0 4px 8px rgba(221, 36, 118, 0.08);
+            transform: translateY(-1px);
+        }
+        .message-content th, .message-content td { 
+            padding: 0.75rem 1rem; 
+            text-align: left; 
+            border-bottom: 1px solid var(--border-color); 
+            font-size: 0.9rem;
+        }
+        .message-content th { 
+            background: #F9F9F9; 
+            font-weight: 600; 
+            font-size: 0.8rem; 
+            color: var(--text-muted); 
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .message-content tr:last-child td { border-bottom: none; }
+
+        .input-area { 
+            padding: 1.5rem 2rem 2.5rem; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            width: 100%; 
+            background: linear-gradient(180deg, rgba(250,250,250,0) 0%, #FAFAFA 40%);
+        }
+        .input-wrapper { 
+            background: #FFFFFF; 
+            border: 1px solid #E0E0E0; 
+            border-radius: var(--radius-lg); 
+            padding: 1rem 1.25rem; 
+            display: flex; 
+            align-items: flex-end; 
+            gap: 1rem; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .input-wrapper:focus-within {
+            border-color: #333;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+        }
+        
+        textarea { 
+            flex-grow: 1; 
+            background: transparent; 
+            border: none; 
+            color: var(--text-main); 
+            font-family: inherit; 
+            font-size: 1rem; 
+            resize: none; 
+            max-height: 200px; 
+            padding: 4px 0; 
+            outline: none; 
+            line-height: 1.5;
+        }
+        textarea::placeholder { color: #A0A0A0; }
+        
+        .send-btn { 
+            background: var(--text-main); 
+            color: white; 
+            border: none; 
+            width: 36px; 
+            height: 36px; 
+            border-radius: 50%; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            transition: transform 0.2s, background 0.2s; 
+        }
+        .send-btn:hover { transform: scale(1.05); background: #333; }
+        .send-btn svg { width: 16px; height: 16px; }
+
+        /* ======================== DASHBOARD VIEW ======================== */
+        .dashboard-scroll { overflow-y: auto; height: calc(100vh - 70px); width: 100%; }
+        .dashboard-content { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem; display: flex; flex-direction: column; gap: 2rem; }
+        
+        .dashboard-header-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+        .kpi-card {
+            background: #FFFFFF;
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            border: var(--card-border);
+            box-shadow: var(--card-shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            transition: transform 0.3s ease;
+        }
+        .kpi-card:hover { transform: translateY(-4px); }
+        .kpi-card h4 { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+        .kpi-card .value { font-size: 2.5rem; font-weight: 700; color: var(--text-main); letter-spacing: -0.02em; }
+        
+        .dashboard-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); 
+            gap: 2rem; 
+        }
+        .chart-card { 
+            background: #FFFFFF; 
+            padding: 2rem; 
+            border-radius: var(--radius-lg); 
+            border: var(--card-border); 
+            height: 480px; 
+            display: flex; 
+            flex-direction: column; 
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: var(--card-shadow);
+        }
+        .chart-card:hover { 
+            transform: translateY(-4px); 
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08); 
+        }
+        .chart-card h3 { 
+            font-size: 1.1rem; 
+            margin-bottom: 2rem; 
+            color: var(--text-main); 
+            font-weight: 600; 
+            letter-spacing: -0.01em;
+        }
+        .chart-wrapper { flex-grow: 1; position: relative; min-height: 0; width: 100%; }
+        canvas { width: 100% !important; height: 100% !important; }
+
+        .recent-table-wrapper {
+            background: #FFFFFF;
+            border-radius: var(--radius-lg);
+            border: var(--card-border);
+            box-shadow: var(--card-shadow);
+            padding: 2rem;
+        }
+        .recent-table-wrapper h3 { font-size: 1.1rem; margin-bottom: 1.5rem; color: var(--text-main); font-weight: 600; letter-spacing: -0.01em; }
+        .recent-table { width: 100%; border-collapse: collapse; }
+        .recent-table th, .recent-table td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .recent-table th { font-weight: 600; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .recent-table tr:last-child td { border-bottom: none; }
+        .chart-card:hover { 
+            transform: translateY(-4px); 
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08); 
+        }
+        .chart-card h3 { 
+            font-size: 1.1rem; 
+            margin-bottom: 2rem; 
+            color: var(--text-main); 
+            font-weight: 600; 
+            letter-spacing: -0.01em;
+        }
+        .chart-wrapper { flex-grow: 1; position: relative; min-height: 0; width: 100%; }
+        canvas { width: 100% !important; height: 100% !important; }
+
+        /* ======================== ANIMATIONS & UTILS ======================== */
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .typing-indicator { display: flex; gap: 4px; padding: 12px 0; }
+        .typing-indicator span { 
+            width: 6px; height: 6px; 
+            background: #CCC; 
+            border-radius: 50%; 
+            animation: bounce 1.4s infinite ease-in-out; 
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); background: var(--text-main); } }
+
+        .toast { 
+            position: fixed; 
+            bottom: 2rem; 
+            right: 2rem; 
+            background: var(--text-main); 
+            color: #FFF;
+            padding: 1rem 1.5rem; 
+            border-radius: var(--radius-md); 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15); 
+            z-index: 100; 
+            display: none; 
+            font-size: 0.9rem;
+            font-weight: 500;
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
+        }
+        @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .status-dot {
+            width: 8px; height: 8px; 
+            background: #10b981; 
+            border-radius: 50%; 
+            margin-right: 8px;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon" style="background: transparent; padding: 0;">
+                    <img src="/static/logo.png" alt="Finny Logo" style="width: 28px; height: 28px; object-fit: cover; border-radius: var(--radius-sm); box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                </div>
+                Finny
+            </div>
+            
+            <button class="new-chat-btn" onclick="location.reload()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                New Conversation
+            </button>
+
+            <div class="nav-item active" id="nav-chat" onclick="switchView('chat')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Chat Assistant
+            </div>
+            <a href="#" class="nav-item" id="nav-dashboard" onclick="switchView('dashboard')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                Analytics
+            </a>
+            <a href="#" class="nav-item" id="nav-profile" onclick="switchView('profile')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Profile
+            </a>
+
+            <div class="sidebar-section-title">Documents</div>
+            <div class="upload-area" onclick="document.getElementById('file-input').click()">
+                <div class="upload-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </div>
+                <p>Click to <span>upload invoice</span></p>
+            </div>
+            <input type="file" id="file-input" style="display:none" onchange="handleUpload(event)">
+            <div id="upload-status">No documents uploaded.</div>
+        </aside>
+
+        <main class="main-content">
+            <!-- Chat View -->
+            <div id="chat-view" class="view-container active">
+                <header class="header">
+                    <div class="status-dot"></div>
+                    SME Finance Assistant
+                    <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 12px; font-weight: 400;">Ollama (Active)</span>
+                </header>
+                <div class="chat-messages" id="chat-messages">
+                    <!-- Messages will be injected here -->
+                </div>
+                <div class="input-area">
+                    <div class="input-wrapper">
+                        <textarea id="message-input" placeholder="Ask Finny anything..." rows="1" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendMessage()}"></textarea>
+                        <button class="send-btn" onclick="sendMessage()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        </button>
+                    </div>
+                    <div style="text-align: center; margin-top: 12px; font-size: 0.75rem; color: #999;">
+                        Finny can make mistakes. Consider verifying important financial data.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard View -->
+            <div id="dashboard-view" class="view-container">
+                <header class="header">Financial Analytics</header>
+                <div class="dashboard-scroll">
+                    <div class="dashboard-content">
+                        
+                        <div class="dashboard-header-cards">
+                            <div class="kpi-card">
+                                <h4>Total Spending</h4>
+                                <div class="value" id="kpi-total">$0.00</div>
+                            </div>
+                            <div class="kpi-card">
+                                <h4>Invoices Processed</h4>
+                                <div class="value" id="kpi-count">0</div>
+                            </div>
+                            <div class="kpi-card">
+                                <h4>System Status</h4>
+                                <div class="value" style="color: #10b981; font-size: 1.5rem; margin-top: auto; padding-bottom: 0.5rem; font-weight: 600;">Online & Secure</div>
+                            </div>
+                        </div>
+
+                        <div class="dashboard-grid">
+                            <div class="chart-card">
+                                <h3>Spend by Vendor</h3>
+                                <div class="chart-wrapper">
+                                    <canvas id="vendorPieChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="chart-card">
+                                <h3>Monthly Spending Trend</h3>
+                                <div class="chart-wrapper">
+                                    <canvas id="monthlyBarChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="recent-table-wrapper">
+                            <h3>Recent Invoices</h3>
+                            <table class="recent-table">
+                                <thead>
+                                    <tr>
+                                        <th>Vendor</th>
+                                        <th>Date</th>
+                                        <th>Category</th>
+                                        <th>Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-invoices-body">
+                                    <tr><td colspan="4" style="text-align: center; color: #999; padding: 2rem 0;">No invoices uploaded yet.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile View -->
+            <div id="profile-view" class="view-container">
+                <header class="header">User Profile</header>
+                <div class="dashboard-scroll">
+                    <div class="dashboard-content">
+                        <div class="dashboard-grid" style="grid-template-columns: 1fr; max-width: 600px;">
+                            <div class="chart-card">
+                                <h3>Personalize Your AI Assistant</h3>
+                                <p style="color: #666; font-size: 0.95rem; margin-top: 0.5rem; margin-bottom: 1.5rem; line-height: 1.5;">Finny uses this information to personalize your chat experience and understand your business context.</p>
+                                
+                                <div style="margin-bottom: 1.25rem;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; color: #111;">Your Name</label>
+                                    <input type="text" id="profile-name" placeholder="e.g. Jane Doe" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-family: inherit; font-size: 0.95rem; outline: none;">
+                                </div>
+                                
+                                <div style="margin-bottom: 1.25rem;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; color: #111;">Company Name</label>
+                                    <input type="text" id="profile-company" placeholder="e.g. TechSolutions Inc." style="width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-family: inherit; font-size: 0.95rem; outline: none;">
+                                </div>
+                                
+                                <div style="margin-bottom: 1.5rem;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; color: #111;">What does your company do?</label>
+                                    <textarea id="profile-desc" placeholder="e.g. We are a B2B SaaS platform that provides marketing analytics..." style="width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-family: inherit; font-size: 0.95rem; min-height: 100px; resize: vertical; outline: none;"></textarea>
+                                </div>
+                                
+                                <button onclick="saveProfile()" style="background: var(--text-main); color: #FFF; border: none; padding: 0.75rem 1.5rem; border-radius: 2rem; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">Save Profile</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const messageInput = document.getElementById('message-input');
+        let categoryChart = null;
+        let vendorChart = null;
+
+        // Initialize with welcome message
+        window.onload = () => {
+            addMessage("Hello! I'm Finny, your SME Finance Assistant. Upload an invoice to start **auto-filing** and view your **financial analytics**. How can I help you today?", true);
+        };
+
+        function switchView(view) {
+            document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            document.getElementById(`${view}-view`).classList.add('active');
+            document.getElementById(`nav-${view}`).classList.add('active');
+
+            if (view === 'dashboard') loadDashboard();
+            if (view === 'profile') loadProfile();
+        }
+
+        async function loadProfile() {
+            try {
+                const res = await fetch('/api/profile');
+                const data = await res.json();
+                document.getElementById('profile-name').value = data.user_name || '';
+                document.getElementById('profile-company').value = data.company_name || '';
+                document.getElementById('profile-desc').value = data.company_description || '';
+            } catch (e) {
+                console.error("Failed to load profile", e);
+            }
+        }
+        
+        async function saveProfile() {
+            const data = {
+                user_name: document.getElementById('profile-name').value,
+                company_name: document.getElementById('profile-company').value,
+                company_description: document.getElementById('profile-desc').value
+            };
+            try {
+                await fetch('/api/profile', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                showToast("Profile saved successfully!");
+            } catch (e) {
+                showToast("Failed to save profile.");
+            }
+        }
+
+        async function loadDashboard() {
+            try {
+                const res = await fetch('/dashboard-data');
+                const data = await res.json();
+                
+                if (Object.keys(data.vendors).length === 0) {
+                    showToast("Upload an invoice to see analytics!");
+                }
+                
+                // Update KPIs
+                document.getElementById('kpi-total').textContent = '$' + (data.kpi.total_spent || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('kpi-count').textContent = data.kpi.invoice_count || 0;
+                
+                // Update Recent Invoices Table
+                const tbody = document.getElementById('recent-invoices-body');
+                if (data.recent && data.recent.length > 0) {
+                    tbody.innerHTML = '';
+                    data.recent.forEach(inv => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td style="font-weight: 500; color: #111;">${inv.vendor}</td>
+                            <td>${inv.date}</td>
+                            <td><span style="background: #F0F0F0; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 500;">${inv.category}</span></td>
+                            <td style="font-weight: 600;">$${inv.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+                
+                renderPieChart('vendorPieChart', data.vendors, 'Spend by Vendor');
+                renderBarChart('monthlyBarChart', data.monthly, 'Monthly Spending Trend');
+            } catch (err) {
+                console.error('Failed to load dashboard data:', err);
+            }
+        }
+
+        // Custom chart.js defaults for modern look
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#666';
+
+        function renderPieChart(id, data, label) {
+            const ctx = document.getElementById(id).getContext('2d');
+            if (categoryChart) categoryChart.destroy();
+            categoryChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        data: Object.values(data),
+                        backgroundColor: ['#FF512F', '#DD2476', '#111111', '#888888', '#EAEAEA'],
+                        borderWidth: 2,
+                        borderColor: '#FFF',
+                        hoverOffset: 4
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: { 
+                        legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true, pointStyle: 'circle' } } 
+                    }
+                }
+            });
+        }
+
+        function renderBarChart(id, data, label) {
+            const ctx = document.getElementById(id).getContext('2d');
+            if (vendorChart) vendorChart.destroy();
+            vendorChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        label: 'Total Spending ($)',
+                        data: Object.values(data),
+                        backgroundColor: '#111111',
+                        borderRadius: 6,
+                        barThickness: 'flex',
+                        maxBarThickness: 40
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, 
+                            border: { display: false }
+                        },
+                        x: { 
+                            grid: { display: false }, 
+                            border: { display: false } 
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function addMessage(content, isAi) {
+            const row = document.createElement('div');
+            row.className = `message-row ${isAi ? 'ai-message' : 'user-message'}`;
+            row.innerHTML = `
+                <div class="avatar ${isAi ? 'ai' : 'user'}">
+                    ${isAi ? '<img src="/static/logo.png" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">' : 'U'}
+                </div>
+                <div class="message-content">${isAi ? marked.parse(content) : content}</div>
+            `;
+            chatMessages.appendChild(row);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function sendSuggestion(text) {
+            const input = document.getElementById('message-input');
+            if (input) {
+                input.value = text;
+                sendMessage();
+            }
+        }
+
+        async function sendMessage() {
+            const msg = messageInput.value.trim();
+            if (!msg) return;
+            
+            // Remove suggestions if they exist
+            const sug = document.getElementById('chat-suggestions');
+            if (sug) sug.remove();
+            
+            messageInput.value = '';
+            addMessage(msg, false);
+            
+            // Typing
+            const typingRow = document.createElement('div');
+            typingRow.className = 'message-row ai-message';
+            typingRow.innerHTML = `<div class="avatar ai"><img src="/static/logo.png" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;"></div><div class="message-content"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
+            chatMessages.appendChild(typingRow);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            try {
+                const res = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: msg, session_id: 'default' })
+                });
+                
+                typingRow.remove();
+                
+                // Create a new message row for the AI
+                const row = document.createElement('div');
+                row.className = 'message-row ai-message';
+                row.innerHTML = `
+                    <div class="avatar ai">
+                        <img src="/static/logo.png" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                    </div>
+                    <div class="message-content"></div>
+                `;
+                chatMessages.appendChild(row);
+                const contentDiv = row.querySelector('.message-content');
+
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let accumulated = "";
+
+                while (true) {
+                    const {done, value} = await reader.read();
+                    if (done) break;
+                    accumulated += decoder.decode(value, {stream: true});
+                    contentDiv.innerHTML = marked.parse(accumulated);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+            } catch (err) {
+                typingRow.remove();
+                addMessage("I'm having trouble connecting to my brain. Is Ollama running?", true);
+            }
+        }
+
+        async function handleUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showToast(`Analyzing ${file.name}...`);
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('/upload', { method: 'POST', body: formData });
+                const data = await res.json();
+                showToast(`✓ Filed as ${data.message}`);
+                
+                const successMsg = `I've auto-filed **${file.name}** under vendor **${data.vendor}**. I've also updated your analytics dashboard!`;
+                addMessage(successMsg, true);
+                
+                document.getElementById('upload-status').textContent = `Last upload: ${file.name}`;
+            } catch (err) {
+                showToast("Failed to process document.");
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 4000);
+        }
+
+        // Add suggestion bubbles on initial load
+        setTimeout(() => {
+            const suggestionsRow = document.createElement('div');
+            suggestionsRow.className = 'message-row ai-message';
+            suggestionsRow.id = 'chat-suggestions';
+            suggestionsRow.innerHTML = `
+                <div class="avatar ai" style="visibility: hidden; width: 32px; height: 32px; flex-shrink: 0;"></div>
+                <div class="suggestions-container">
+                    <button class="suggestion-bubble" onclick="sendSuggestion('Give me a summary of Q1 2026 spending')">📊 Q1 2026 Summary</button>
+                    <button class="suggestion-bubble" onclick="sendSuggestion('List my top 3 vendors by total spend')">🏢 Top Vendors</button>
+                    <button class="suggestion-bubble" onclick="sendSuggestion('Are there any duplicate invoices?')">🔍 Find Duplicates</button>
+                    <button class="suggestion-bubble" onclick="sendSuggestion('Summarize all software subscriptions')">💻 Software Subscriptions</button>
+                </div>
+            `;
+            chatMessages.appendChild(suggestionsRow);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }, 300);
+    </script>
+</body>
+</html>
